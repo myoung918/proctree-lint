@@ -64,6 +64,51 @@ or explicitly with `-`:
 $ cat example.proctree | go run . -
 ```
 
+Pass `-json` to get the tree as JSON instead, e.g. for feeding into `jq`
+or another tool:
+
+```
+$ go run . -json example.proctree
+[
+  {
+    "pid": 1,
+    "ppid": 0,
+    "command": "init",
+    "children": [
+      {
+        "pid": 2,
+        "ppid": 1,
+        "command": "bash",
+        "children": [
+          {
+            "pid": 3,
+            "ppid": 2,
+            "command": "make -j4",
+            "children": [
+              {
+                "pid": 4,
+                "ppid": 3,
+                "command": "cc -c main.c"
+              },
+              {
+                "pid": 5,
+                "ppid": 3,
+                "command": "cc -c util.c"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "pid": 6,
+        "ppid": 1,
+        "command": "sshd"
+      }
+    ]
+  }
+]
+```
+
 Validation failures point at the offending line:
 
 ```

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -14,15 +15,31 @@ func main() {
 }
 
 func run(args []string) error {
+	fs := flag.NewFlagSet("proctree", flag.ContinueOnError)
+	jsonOutput := fs.Bool("json", false, "emit the tree as JSON instead of pretty-printing it")
+	fs.Usage = func() {
+		fmt.Fprint(fs.Output(), `usage: proctree [-json] [file]
+
+reads a process tree snapshot from file, or from stdin if file is
+omitted or "-"
+
+flags:
+`)
+		fs.PrintDefaults()
+	}
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
 	var r io.Reader
-	switch len(args) {
+	switch fs.NArg() {
 	case 0:
 		r = os.Stdin
 	case 1:
-		if args[0] == "-" {
+		if fs.Arg(0) == "-" {
 			r = os.Stdin
 		} else {
-			f, err := os.Open(args[0])
+			f, err := os.Open(fs.Arg(0))
 			if err != nil {
 				return err
 			}
@@ -30,10 +47,8 @@ func run(args []string) error {
 			r = f
 		}
 	default:
-		return fmt.Errorf(`usage: proctree [file]
-
-reads a process tree snapshot from file, or from stdin if file is
-omitted or "-"`)
+		fs.Usage()
+		return fmt.Errorf("too many arguments")
 	}
 
 	procs, err := Parse(r)
@@ -43,6 +58,10 @@ omitted or "-"`)
 	roots, err := Validate(procs)
 	if err != nil {
 		return err
+	}
+
+	if *jsonOutput {
+		return PrintJSON(os.Stdout, roots)
 	}
 	Print(os.Stdout, roots)
 	return nil
