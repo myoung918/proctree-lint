@@ -17,8 +17,9 @@ func main() {
 func run(args []string) error {
 	fs := flag.NewFlagSet("proctree", flag.ContinueOnError)
 	jsonOutput := fs.Bool("json", false, "emit the tree as JSON instead of pretty-printing it")
+	find := fs.Int("find", 0, "print only the subtree rooted at this pid")
 	fs.Usage = func() {
-		fmt.Fprint(fs.Output(), `usage: proctree [-json] [file]
+		fmt.Fprint(fs.Output(), `usage: proctree [-json] [-find pid] [file]
 
 reads a process tree snapshot from file, or from stdin if file is
 omitted or "-"
@@ -58,6 +59,14 @@ flags:
 	roots, err := Validate(procs)
 	if err != nil {
 		return err
+	}
+
+	if *find != 0 {
+		n, ok := Find(roots, *find)
+		if !ok {
+			return fmt.Errorf("no such pid: %d", *find)
+		}
+		roots = []*Node{n}
 	}
 
 	if *jsonOutput {

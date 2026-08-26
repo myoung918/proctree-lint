@@ -92,6 +92,45 @@ func TestValidateCycle(t *testing.T) {
 	}
 }
 
+func TestFindReturnsSubtree(t *testing.T) {
+	procs := []Process{
+		{PID: 1, PPID: 0, Command: "init", Line: 1},
+		{PID: 2, PPID: 1, Command: "bash", Line: 2},
+		{PID: 3, PPID: 2, Command: "make -j4", Line: 3},
+		{PID: 4, PPID: 3, Command: "cc -c main.c", Line: 4},
+		{PID: 6, PPID: 1, Command: "sshd", Line: 5},
+	}
+	roots, err := Validate(procs)
+	if err != nil {
+		t.Fatalf("Validate returned error: %v", err)
+	}
+
+	n, ok := Find(roots, 3)
+	if !ok {
+		t.Fatal("Find did not locate pid 3")
+	}
+	if n.PID != 3 || n.Command != "make -j4" {
+		t.Fatalf("found node = %+v, want pid 3 (make -j4)", n)
+	}
+	if len(n.Children) != 1 || n.Children[0].PID != 4 {
+		t.Fatalf("n.Children = %+v, want a single child with pid 4", n.Children)
+	}
+}
+
+func TestFindMissingPid(t *testing.T) {
+	procs := []Process{
+		{PID: 1, PPID: 0, Command: "init", Line: 1},
+	}
+	roots, err := Validate(procs)
+	if err != nil {
+		t.Fatalf("Validate returned error: %v", err)
+	}
+
+	if _, ok := Find(roots, 99); ok {
+		t.Fatal("Find reported success for a pid that is not in the tree")
+	}
+}
+
 func TestValidateSelfParent(t *testing.T) {
 	procs := []Process{
 		{PID: 1, PPID: 1, Command: "a", Line: 1},

@@ -56,3 +56,26 @@ func Validate(procs []Process) ([]*Node, error) {
 
 	return roots, nil
 }
+
+// Find returns the node for pid, searching the whole forest rooted at
+// roots, not just the roots themselves.
+func Find(roots []*Node, pid int) (*Node, bool) {
+	for _, r := range roots {
+		if n, ok := find(r, pid); ok {
+			return n, true
+		}
+	}
+	return nil, false
+}
+
+func find(n *Node, pid int) (*Node, bool) {
+	if n.PID == pid {
+		return n, true
+	}
+	for _, c := range n.Children {
+		if found, ok := find(c, pid); ok {
+			return found, true
+		}
+	}
+	return nil, false
+}

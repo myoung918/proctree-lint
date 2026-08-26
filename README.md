@@ -109,6 +109,19 @@ $ go run . -json example.proctree
 ]
 ```
 
+Pass `-find pid` to print only the subtree rooted at that pid, instead
+of the whole forest:
+
+```
+$ go run . -find 3 example.proctree
+3 make -j4
+├─ 4 cc -c main.c
+└─ 5 cc -c util.c
+```
+
+It combines with `-json`, and works no matter how deep the pid is
+nested - it doesn't have to be a root.
+
 Validation failures point at the offending line:
 
 ```
