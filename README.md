@@ -129,6 +129,26 @@ $ printf '1 0 init\n2 1 bash\n2 1 vim\n' | go run .
 proctree: line 3: duplicate pid 2 (first seen at line 2)
 ```
 
+## Diffing
+
+Pass `-diff old-file new-file` to compare two snapshots by pid instead of
+printing one. Each is parsed and validated independently, then matched up
+pid by pid: a pid only in the old snapshot is a removal, a pid only in
+the new one is an addition, and a pid in both whose ppid or command
+changed prints as a removal followed by an addition:
+
+```
+$ go run . -diff before.proctree after.proctree
+- 2 1 bash
++ 2 1 zsh
+- 3 1 sshd
++ 4 1 cron
+```
+
+`-diff` doesn't build or print a tree, so it can't be combined with
+`-json` or `-find`. At most one of the two files can be `-` for stdin -
+diffing two live snapshots means capturing one to a file first.
+
 ## Building
 
 ```
