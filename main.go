@@ -20,18 +20,54 @@ func run(args []string) error {
 	find := fs.Int("find", 0, "print only the subtree rooted at this pid")
 	diff := fs.Bool("diff", false, "compare two snapshots and print what was added, removed, or changed")
 	fs.Usage = func() {
-		fmt.Fprint(fs.Output(), `usage: proctree [-json] [-find pid] [file]
+		fmt.Fprint(fs.Output(), `NAME
+       proctree - validate and print pid/ppid/command process tree snapshots
+
+SYNOPSIS
+       proctree [-json] [-find pid] [file]
        proctree -diff old-file new-file
 
-reads a process tree snapshot from file, or from stdin if file is
-omitted or "-". With -diff, compares two snapshots by pid instead;
-at most one of the two files may be "-" for stdin.
+DESCRIPTION
+       proctree reads a process tree snapshot from file, or from stdin if
+       file is omitted or "-". Each line of the snapshot has the form
 
-flags:
+              pid ppid command
+
+       proctree validates that the pids are unique, that every non-zero
+       ppid resolves to another pid in the snapshot, and that there are
+       no cycles, then prints the result indented like pstree(1).
+
+       With -diff, proctree instead compares two snapshots by pid and
+       prints what was added, removed, or changed between them. At most
+       one of the two files may be "-" for stdin.
+
+OPTIONS
+       -json
+              Emit the tree as JSON instead of pretty-printing it.
+
+       -find pid
+              Print only the subtree rooted at pid instead of the whole
+              forest. Combines with -json.
+
+       -diff
+              Compare two snapshots given as old-file and new-file and
+              print the differences by pid. Cannot be combined with
+              -json or -find.
+
+       -h, -help
+              Print this help and exit.
+
+EXAMPLES
+       proctree snapshot.proctree
+       awk '{print $1, $2, $3}' /proc/*/stat | proctree
+       proctree -json -find 3 snapshot.proctree
+       proctree -diff before.proctree after.proctree
 `)
-		fs.PrintDefaults()
 	}
 	if err := fs.Parse(args); err != nil {
+		if err == flag.ErrHelp {
+			return nil
+		}
 		return err
 	}
 

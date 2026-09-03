@@ -149,6 +149,9 @@ $ go run . -diff before.proctree after.proctree
 `-json` or `-find`. At most one of the two files can be `-` for stdin -
 diffing two live snapshots means capturing one to a file first.
 
+Pass `-h` for the full man-page style usage doc, including all flags and
+examples.
+
 ## Building
 
 ```
