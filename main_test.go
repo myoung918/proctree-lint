@@ -45,6 +45,39 @@ func TestRunHelpFlag(t *testing.T) {
 	}
 }
 
+// captureStdout redirects os.Stdout for the duration of fn and returns
+// what was written to it.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	orig := os.Stdout
+	os.Stdout = w
+	defer func() { os.Stdout = orig }()
+
+	fn()
+
+	w.Close()
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	return buf.String()
+}
+
+func TestRunVersionFlag(t *testing.T) {
+	var err error
+	out := captureStdout(t, func() {
+		err = run([]string{"-version"})
+	})
+	if err != nil {
+		t.Fatalf("run([-version]) returned error: %v, want nil", err)
+	}
+	if !strings.Contains(out, version) {
+		t.Errorf("version output = %q, want it to contain %q", out, version)
+	}
+}
+
 func TestRunUnknownFlag(t *testing.T) {
 	var err error
 	captureStderr(t, func() {

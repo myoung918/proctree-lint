@@ -7,6 +7,10 @@ import (
 	"os"
 )
 
+// version is bumped by hand for each release; there's no build tooling
+// here to stamp it from a tag.
+const version = "0.5.0"
+
 func main() {
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "proctree: "+err.Error())
@@ -19,6 +23,7 @@ func run(args []string) error {
 	jsonOutput := fs.Bool("json", false, "emit the tree as JSON instead of pretty-printing it")
 	find := fs.Int("find", 0, "print only the subtree rooted at this pid")
 	diff := fs.Bool("diff", false, "compare two snapshots and print what was added, removed, or changed")
+	showVersion := fs.Bool("version", false, "print the version number and exit")
 	fs.Usage = func() {
 		fmt.Fprint(fs.Output(), `NAME
        proctree - validate and print pid/ppid/command process tree snapshots
@@ -26,6 +31,7 @@ func run(args []string) error {
 SYNOPSIS
        proctree [-json] [-find pid] [file]
        proctree -diff old-file new-file
+       proctree -version
 
 DESCRIPTION
        proctree reads a process tree snapshot from file, or from stdin if
@@ -54,6 +60,9 @@ OPTIONS
               print the differences by pid. Cannot be combined with
               -json or -find.
 
+       -version
+              Print the version number and exit.
+
        -h, -help
               Print this help and exit.
 
@@ -69,6 +78,11 @@ EXAMPLES
 			return nil
 		}
 		return err
+	}
+
+	if *showVersion {
+		fmt.Fprintln(os.Stdout, "proctree "+version)
+		return nil
 	}
 
 	if *diff {
