@@ -29,7 +29,7 @@ func run(args []string) error {
        proctree - validate and print pid/ppid/command process tree snapshots
 
 SYNOPSIS
-       proctree [-json] [-find pid] [file]
+       proctree [-json] [-find pid] [file...]
        proctree -diff old-file new-file
        proctree -version
 
@@ -38,6 +38,11 @@ DESCRIPTION
        file is omitted or "-". Each line of the snapshot has the form
 
               pid ppid command
+
+       If more than one file is given, their processes are merged into a
+       single forest before validation, as if the lines had all come
+       from one file. At most one file may be "-", since stdin can only
+       be read once.
 
        proctree validates that the pids are unique, that every non-zero
        ppid resolves to another pid in the snapshot, and that there are
@@ -68,6 +73,7 @@ OPTIONS
 
 EXAMPLES
        proctree snapshot.proctree
+       proctree host1.proctree host2.proctree
        awk '{print $1, $2, $3}' /proc/*/stat | proctree
        proctree -json -find 3 snapshot.proctree
        proctree -diff before.proctree after.proctree
@@ -96,23 +102,7 @@ EXAMPLES
 		return runDiff(fs.Arg(0), fs.Arg(1))
 	}
 
-	var r io.Reader
-	switch fs.NArg() {
-	case 0:
-		r = os.Stdin
-	case 1:
-		rd, closeFn, err := openInput(fs.Arg(0))
-		if err != nil {
-			return err
-		}
-		defer closeFn()
-		r = rd
-	default:
-		fs.Usage()
-		return fmt.Errorf("too many arguments")
-	}
-
-	procs, err := Parse(r)
+	procs, err := readSnapshots(fs.Args())
 	if err != nil {
 		return err
 	}
@@ -178,4 +168,42 @@ func parseFile(name string) ([]Process, error) {
 	}
 	defer closeFn()
 	return Parse(r)
+}
+
+// readSnapshots parses and concatenates the snapshots at names into one
+// list of processes, tagging each with the file it came from so that
+// Validate's error messages can tell overlapping pids apart. No names
+// means read a single snapshot from stdin.
+func readSnapshots(names []string) ([]Process, error) {
+	if len(names) == 0 {
+		names = []string{"-"}
+	}
+
+	stdinCount := 0
+	for _, name := range names {
+		if name == "-" {
+			stdinCount++
+		}
+	}
+	if stdinCount > 1 {
+		return nil, fmt.Errorf(`stdin ("-") can only be given once`)
+	}
+
+	var all []Process
+	for _, name := range names {
+		procs, err := parseFile(name)
+		if err != nil {
+			if name == "-" {
+				return nil, err
+			}
+			return nil, fmt.Errorf("%s: %w", name, err)
+		}
+		if name != "-" {
+			for i := range procs {
+				procs[i].File = name
+			}
+		}
+		all = append(all, procs...)
+	}
+	return all, nil
 }

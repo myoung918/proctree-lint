@@ -129,6 +129,28 @@ $ printf '1 0 init\n2 1 bash\n2 1 vim\n' | go run .
 proctree: line 3: duplicate pid 2 (first seen at line 2)
 ```
 
+## Multiple files
+
+More than one file can be given; their processes are merged into a
+single forest before validation, as if the lines had all come from one
+file. This is handy for snapshots captured piecemeal, e.g. one file per
+container in a shared pid namespace:
+
+```
+$ go run . container1.proctree container2.proctree
+```
+
+At most one of the files can be `-`, since stdin can only be read once.
+A pid that shows up in more than one file is still a duplicate-pid
+error - proctree doesn't try to guess whether it's the same process
+twice or two unrelated ones that happen to share a number, it just
+points at both files:
+
+```
+$ go run . a.proctree b.proctree
+proctree: b.proctree line 1: duplicate pid 1 (first seen at a.proctree line 1)
+```
+
 ## Diffing
 
 Pass `-diff old-file new-file` to compare two snapshots by pid instead of

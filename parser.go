@@ -13,7 +13,18 @@ type Process struct {
 	PID     int
 	PPID    int
 	Command string
-	Line    int // source line, for error messages
+	File    string // source file, set by the caller when merging several; empty for a single file or stdin
+	Line    int    // source line, for error messages
+}
+
+// location formats where a process came from, for error messages. A bare
+// line number is enough when there's only one file; once several files
+// are merged into one forest, the file name says which "line 3" is meant.
+func (p Process) location() string {
+	if p.File == "" {
+		return fmt.Sprintf("line %d", p.Line)
+	}
+	return fmt.Sprintf("%s line %d", p.File, p.Line)
 }
 
 // ParseError reports a problem with a specific line of input.

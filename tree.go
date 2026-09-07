@@ -19,7 +19,7 @@ func Validate(procs []Process) ([]*Node, error) {
 	nodes := make(map[int]*Node, len(procs))
 	for _, p := range procs {
 		if existing, ok := nodes[p.PID]; ok {
-			return nil, fmt.Errorf("line %d: duplicate pid %d (first seen at line %d)", p.Line, p.PID, existing.Line)
+			return nil, fmt.Errorf("%s: duplicate pid %d (first seen at %s)", p.location(), p.PID, existing.location())
 		}
 		nodes[p.PID] = &Node{Process: p}
 	}
@@ -33,7 +33,7 @@ func Validate(procs []Process) ([]*Node, error) {
 		}
 		parent, ok := nodes[p.PPID]
 		if !ok {
-			return nil, fmt.Errorf("line %d: pid %d has ppid %d, which does not appear in the input", p.Line, p.PID, p.PPID)
+			return nil, fmt.Errorf("%s: pid %d has ppid %d, which does not appear in the input", p.location(), p.PID, p.PPID)
 		}
 		parent.Children = append(parent.Children, n)
 	}

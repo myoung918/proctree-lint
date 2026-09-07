@@ -95,12 +95,50 @@ func TestRunDiffConflictingFlags(t *testing.T) {
 	}
 }
 
-func TestRunTooManyArgs(t *testing.T) {
+func TestRunStdinGivenTwice(t *testing.T) {
+	err := run([]string{"-", "-"})
+	if err == nil || !strings.Contains(err.Error(), "stdin") {
+		t.Fatalf(`run(-, -) error = %v, want mention of stdin`, err)
+	}
+}
+
+// writeTempFile creates a file under t.TempDir() containing content and
+// returns its path.
+func writeTempFile(t *testing.T, content string) string {
+	t.Helper()
+	f, err := os.CreateTemp(t.TempDir(), "*.proctree")
+	if err != nil {
+		t.Fatalf("CreateTemp: %v", err)
+	}
+	defer f.Close()
+	if _, err := f.WriteString(content); err != nil {
+		t.Fatalf("WriteString: %v", err)
+	}
+	return f.Name()
+}
+
+func TestRunMergesMultipleFiles(t *testing.T) {
+	a := writeTempFile(t, "1 0 init\n2 1 bash\n")
+	b := writeTempFile(t, "3 1 sshd\n")
+
 	var err error
-	captureStderr(t, func() {
-		err = run([]string{"a", "b", "c"})
+	out := captureStdout(t, func() {
+		err = run([]string{a, b})
 	})
-	if err == nil || !strings.Contains(err.Error(), "too many arguments") {
-		t.Fatalf("run(a b c) error = %v, want too many arguments", err)
+	if err != nil {
+		t.Fatalf("run(a, b) returned error: %v", err)
+	}
+	if !strings.Contains(out, "2 bash") || !strings.Contains(out, "3 sshd") {
+		t.Errorf("output = %q, want it to contain processes from both files", out)
+	}
+}
+
+func TestRunDuplicatePidAcrossFiles(t *testing.T) {
+	a := writeTempFile(t, "1 0 init\n")
+	b := writeTempFile(t, "1 0 vim\n")
+
+	err := run([]string{a, b})
+	if err == nil || !strings.Contains(err.Error(), "duplicate pid 1") {
+		t.Fatalf("run(a, b) error = %v, want mention of duplicate pid 1", err)
 	}
 }
