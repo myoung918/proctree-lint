@@ -1,0 +1,7 @@
+# captured from a sandboxed build step
+1 0 init
+2 1 bash
+3 2 make -j4
+4 3 cc -c main.c
+5 3 cc -c util.c
+6 1 sshd

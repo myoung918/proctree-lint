@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"os"
 	"strings"
@@ -141,4 +142,70 @@ func TestRunDuplicatePidAcrossFiles(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "duplicate pid 1") {
 		t.Fatalf("run(a, b) error = %v, want mention of duplicate pid 1", err)
 	}
+}
+
+// TestRunExampleProctree runs main's entry point end-to-end against the
+// example.proctree shipped in the repo, which the README's examples are
+// copied from. If either drifts from the other, this test is the one
+// that should catch it.
+func TestRunExampleProctree(t *testing.T) {
+	const path = "example.proctree"
+
+	t.Run("pretty print", func(t *testing.T) {
+		var err error
+		out := captureStdout(t, func() {
+			err = run([]string{path})
+		})
+		if err != nil {
+			t.Fatalf("run(%q) returned error: %v", path, err)
+		}
+		want := `1 init
+├─ 2 bash
+│  └─ 3 make -j4
+│     ├─ 4 cc -c main.c
+│     └─ 5 cc -c util.c
+└─ 6 sshd
+`
+		if out != want {
+			t.Errorf("output = %q, want %q", out, want)
+		}
+	})
+
+	t.Run("json", func(t *testing.T) {
+		var err error
+		out := captureStdout(t, func() {
+			err = run([]string{"-json", path})
+		})
+		if err != nil {
+			t.Fatalf("run(-json %q) returned error: %v", path, err)
+		}
+		var roots []struct {
+			PID      int    `json:"pid"`
+			Children []any  `json:"children"`
+			Command  string `json:"command"`
+		}
+		if err := json.Unmarshal([]byte(out), &roots); err != nil {
+			t.Fatalf("json.Unmarshal(%q): %v", out, err)
+		}
+		if len(roots) != 1 || roots[0].PID != 1 || len(roots[0].Children) != 2 {
+			t.Errorf("decoded roots = %+v, want a single root pid 1 with 2 children", roots)
+		}
+	})
+
+	t.Run("find", func(t *testing.T) {
+		var err error
+		out := captureStdout(t, func() {
+			err = run([]string{"-find", "3", path})
+		})
+		if err != nil {
+			t.Fatalf("run(-find 3 %q) returned error: %v", path, err)
+		}
+		want := `3 make -j4
+├─ 4 cc -c main.c
+└─ 5 cc -c util.c
+`
+		if out != want {
+			t.Errorf("output = %q, want %q", out, want)
+		}
+	})
 }
